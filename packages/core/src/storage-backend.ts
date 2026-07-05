@@ -4,6 +4,7 @@ export interface UploadRequest {
   filePath: string;
   title: string;
   privacy: "unlisted" | "private";
+  description?: string;
 }
 
 export interface UploadResult {
