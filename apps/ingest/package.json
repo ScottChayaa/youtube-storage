@@ -2,7 +2,6 @@
   "name": "@app/ingest",
   "version": "0.0.0",
   "type": "module",
-  "bin": { "ingest": "src/cli.ts" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",

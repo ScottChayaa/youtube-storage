@@ -1,5 +1,6 @@
-import { writeFile } from "node:fs/promises";
+import { writeFile, rm } from "node:fs/promises";
 import { join, basename } from "node:path";
+import { IndexSchema } from "@app/core";
 import { scanDirectory } from "./scan.js";
 import { readMeta, deriveTags } from "./metadata.js";
 import {
@@ -26,14 +27,25 @@ export async function runIngest(
   const folderName = basename(folder);
   const { year, month, eventName } = parseFolderName(folderName);
 
+  if (photos.length === 0) {
+    throw new Error(`資料夾內沒有照片可處理: ${folder}`);
+  }
+  if (year === 0 || month === 0) {
+    throw new Error(`資料夾名需以 YYYY-MM 開頭: ${folderName}`);
+  }
+
   const timings = computeTimings(photos.map((p) => p.path), DEFAULT_SLIDESHOW);
   const slideshowPath = join(folder, "slideshow.mp4");
   const concatPath = join(folder, ".slideshow-concat.txt");
-  await writeFile(concatPath, buildConcatFile(timings), "utf8");
-  await runFfmpeg(
-    buildFfmpegArgs(concatPath, slideshowPath, DEFAULT_SLIDESHOW),
-    opts.runner,
-  );
+  try {
+    await writeFile(concatPath, buildConcatFile(timings), "utf8");
+    await runFfmpeg(
+      buildFfmpegArgs(concatPath, slideshowPath, DEFAULT_SLIDESHOW),
+      opts.runner,
+    );
+  } finally {
+    await rm(concatPath, { force: true });
+  }
 
   const photoInputs: PhotoEntryInput[] = [];
   for (let i = 0; i < photos.length; i++) {
@@ -58,6 +70,8 @@ export async function runIngest(
     },
     opts.now,
   );
+
+  IndexSchema.parse(index);
 
   const indexPath = join(folder, "index.json");
   await writeFile(indexPath, JSON.stringify(index, null, 2), "utf8");

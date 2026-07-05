@@ -1,9 +1,18 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { IndexSchema } from "@app/core";
 import { runIngest, parseFolderName } from "../src/cli.js";
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 describe("parseFolderName", () => {
   it("由 'YYYY-MM ...' 取出年月與事件名", () => {
@@ -37,5 +46,34 @@ describe("runIngest", () => {
     expect(parsed.segments).toHaveLength(2);
     expect(parsed.events[0].year).toBe(2025);
     expect(parsed.events[0].month).toBe(7);
+  });
+});
+
+describe("runIngest 防呆", () => {
+  it("資料夾內沒有照片時應拒絕，且不寫入 index.json / slideshow.mp4", async () => {
+    const emptyDir = await mkdtemp(join(tmpdir(), "2025-07 空資料夾-"));
+    try {
+      const runner = async (_cmd: string, _args: string[]) => {};
+      await expect(runIngest(emptyDir, { runner })).rejects.toThrow();
+
+      expect(await exists(join(emptyDir, "index.json"))).toBe(false);
+      expect(await exists(join(emptyDir, "slideshow.mp4"))).toBe(false);
+    } finally {
+      await rm(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("資料夾名稱不是 YYYY-MM 開頭時應拒絕", async () => {
+    const badDir = await mkdtemp(join(tmpdir(), "misc-"));
+    try {
+      await writeFile(join(badDir, "a.jpg"), "x");
+      const runner = async (_cmd: string, _args: string[]) => {};
+      await expect(runIngest(badDir, { runner })).rejects.toThrow();
+
+      expect(await exists(join(badDir, "index.json"))).toBe(false);
+      expect(await exists(join(badDir, "slideshow.mp4"))).toBe(false);
+    } finally {
+      await rm(badDir, { recursive: true, force: true });
+    }
   });
 });
