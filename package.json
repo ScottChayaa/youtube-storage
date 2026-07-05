@@ -6,7 +6,8 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
-    "ingest": "pnpm --filter @app/ingest exec tsx src/cli.ts"
+    "ingest": "pnpm --filter @app/ingest exec tsx src/cli.ts",
+    "publish": "pnpm --filter @app/publish exec tsx src/cli.ts"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
