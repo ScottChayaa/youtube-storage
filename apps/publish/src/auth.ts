@@ -54,18 +54,22 @@ export async function getAuthClient(env: NodeJS.ProcessEnv = process.env): Promi
 
   // Loopback：起臨時本機伺服器接收授權碼
   return await new Promise<OAuth2Client>((resolve, reject) => {
+    let client: OAuth2Client | undefined;
     const server = createServer(async (req, res) => {
       try {
         const url = new URL(req.url ?? "", "http://127.0.0.1");
         const code = url.searchParams.get("code");
         if (!code) { res.end("等待授權碼…"); return; }
         res.end("授權完成，可關閉此分頁。");
-        server.close();
-        const port = (server.address() as { port: number }).port;
-        const client = new google.auth.OAuth2(client_id, client_secret, `http://127.0.0.1:${port}`);
+        if (!client) {
+          reject(new Error("OAuth2 client 尚未初始化：伺服器尚未完成 listen"));
+          server.close();
+          return;
+        }
         const { tokens } = await client.getToken(code);
         client.setCredentials(tokens);
         await saveJson(tokenPath(env), tokens);
+        server.close();
         resolve(client);
       } catch (e) {
         reject(e);
@@ -73,7 +77,7 @@ export async function getAuthClient(env: NodeJS.ProcessEnv = process.env): Promi
     });
     server.listen(0, () => {
       const port = (server.address() as { port: number }).port;
-      const client = new google.auth.OAuth2(client_id, client_secret, `http://127.0.0.1:${port}`);
+      client = new google.auth.OAuth2(client_id, client_secret, `http://127.0.0.1:${port}`);
       const authUrl = client.generateAuthUrl({ access_type: "offline", scope: SCOPES, prompt: "consent" });
       console.log(`請在瀏覽器開啟並授權：\n${authUrl}`);
     });
