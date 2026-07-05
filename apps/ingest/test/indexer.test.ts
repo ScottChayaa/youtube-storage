@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { IndexSchema } from "@app/core";
 import { buildIndex } from "../src/indexer.js";
 import type { BuildIndexInput } from "../src/indexer.js";
+import { eventKey } from "../src/id.js";
 
 const input: BuildIndexInput = {
   eventName: "2025-07 游泳",
   year: 2025,
   month: 7,
-  slideshowVideoId: "vid_slideshow_1",
   slideshowDurationSec: 8,
   sourceBatch: "2025-07/游泳/",
   photos: [
@@ -40,8 +40,12 @@ describe("buildIndex", () => {
     expect(idx.videos[0].platformVideoId).toBeNull();
     expect(idx.segments[0].startSec).toBe(0);
     expect(idx.segments[1].endSec).toBe(8);
-    expect(idx.segments[0].eventId).toBe("evt_2025_07");
-    expect(idx.segments[0].videoId).toBe("vid_slideshow_1");
+    const eventId = `evt_2025_07_${eventKey("2025-07 游泳")}`;
+    expect(idx.events[0].id).toBe(eventId);
+    expect(idx.videos[0].id).toBe(`${eventId}_slideshow`);
+    expect(idx.segments[0].eventId).toBe(eventId);
+    expect(idx.segments[0].videoId).toBe(`${eventId}_slideshow`);
+    expect(idx.segments[0].id).toBe(`${eventId}_seg_0001`);
     expect(idx.segments[0].gps).toEqual({ lat: 24.7, lng: 121.74 });
   });
 });

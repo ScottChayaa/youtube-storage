@@ -63,7 +63,6 @@ export async function runIngest(
       eventName,
       year,
       month,
-      slideshowVideoId: "vid_slideshow_1",
       slideshowDurationSec: totalDurationSec(timings),
       sourceBatch: `${folderName}/`,
       photos: photoInputs,
